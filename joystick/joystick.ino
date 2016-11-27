@@ -14,7 +14,7 @@
 
 #define WAIT_COMMAND 250
 
-char BOTTON_CODE[] = {'L','R','F','B', 'A','C','D','E','F','G'};
+char BOTTON_CODE[] = {'L','R','F','B', 'A','C','D','E','G','H'};
 
 
 void setup() {
