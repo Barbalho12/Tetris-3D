@@ -1,4 +1,5 @@
 #include <LiquidCrystal.h> 
+#include "TimerOne.h"
 
 // Define move buttons
 #define MOVE_LEFT 'L'
@@ -13,21 +14,75 @@
 #define MOVE_R_ROTATE_Y 'E'  // Rotate axis y to right
 #define MOVE_L_ROTATE_Z 'G' // Rotate axis z to left
 #define MOVE_R_ROTATE_Z 'H' // Rotate axis z to right
+#define SIZE_OBJECT 8
 
 char BOTTON_CODE[] = {'L','R','F','B', 'A','C','D','E','F','G'};
 
+byte cube[512];
+
+int objectCube[] = {411,412,419,420,475,476,483,484};
 
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 void setup(){
+
+  
     Serial.begin(9600);
     lcd.begin(16, 2); 
     printDisplayLine1("Iniciando..");
+
+    clearCube();
+    setObject(objectCube);
+    sendSettings();
+
+    Timer1.initialize(1500000);
+    Timer1.attachInterrupt(updateGame);
 }
 
+void loop() {
+    
+}
+
+void updateGame(){
+  printDisplayLine2(String(millis()/1000));
+
+  if (standardMotion(objectCube)){
+    //Fazer alguma coisa
+  }else{
+    printDisplayLine1("You Lose!");
+    clearCube();
+  }
+  sendSettings();
+}
+
+bool setObject(int object[]){
+  for(int i = 0; i < SIZE_OBJECT; i++){
+    if(cube[object[i]] == 0){
+      cube[object[i]] = 1;
+    }else{
+      return false;
+    }
+  }
+  return true;
+}
+
+bool standardMotion(int object[]){
+  //int sizeObject = sizeof(object)/sizeof(int); //FORMA DINÂMICA
+  for(int i = 0; i < SIZE_OBJECT; i++){
+    int newPosition = object[i] - 64;
+    if(newPosition >= 0 && cube[newPosition] == 0){
+      cube[object[i]] = 0;
+      object[i] = newPosition;
+      cube[object[i]] = 1;
+    }else{
+      return false;
+    }
+  }
+  return true;
+}
 
 void move_left(){
-  
+
 }
 
 void move_right(){
@@ -64,13 +119,6 @@ void move_l_rotate_z(){
 
 void move_r_rotate_z(){
   
-}
-
-
-
-
-void loop() {
-    printDisplayLine2(String(millis()/1000));
 }
 
 void serialEvent() {
@@ -111,8 +159,20 @@ void serialEvent() {
       default:
           break;
     }
-    Serial.println(inChar);
+    //Serial.println(inChar);
     printDisplayLine1(String(inChar));
+  }
+}
+
+void clearCube(){
+  for(int i = 0; i < 512; i++){
+    cube[i] = 0;
+  }
+}
+
+void sendSettings(){
+  for(int i = 0; i < 512; i++){
+    Serial.write(cube[i]);
   }
 }
 
