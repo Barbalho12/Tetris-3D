@@ -7,23 +7,23 @@ byte shifts[8];
 
 void setup() {
 
-  cube[0] = 170;
-  cube[8] = 24;
-  cube[16] = 170;
-  cube[24] = 24;
-  cube[32] = 170;
-  cube[40] = 24;
-  cube[48] = 170;
-  cube[56] = 24;
-
-  cube[1] = 170;
-  cube[9] = 24;
-  cube[17] = 170;
-  cube[25] = 24;
-  cube[33] = 170;
-  cube[41] = 24;
-  cube[49] = 170;
-  cube[57] = 24;
+//  cube[0] = 170;
+//  cube[8] = 24;
+//  cube[16] = 170;
+//  cube[24] = 24;
+//  cube[32] = 170;
+//  cube[40] = 24;
+//  cube[48] = 170;
+//  cube[56] = 24;
+//
+//  cube[1] = 170;
+//  cube[9] = 24;
+//  cube[17] = 170;
+//  cube[25] = 24;
+//  cube[33] = 170;
+//  cube[41] = 24;
+//  cube[49] = 170;
+//  cube[57] = 24;
   Serial.begin(9600);
 
   //Setting and clearing layers
@@ -85,3 +85,14 @@ void loop() {
     //delay(500);
   }
 }
+
+int bytesRead = 0;
+void serialEvent() {
+    cube[bytesRead] = (byte) Serial.read();
+    if(bytesRead==63){
+      bytesRead = 0;
+    }else{
+      bytesRead++;
+    }
+}
+
