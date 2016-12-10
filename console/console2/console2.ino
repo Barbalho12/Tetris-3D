@@ -15,40 +15,35 @@
 #define MOVE_L_ROTATE_Z 'G' // Rotate axis z to left
 #define MOVE_R_ROTATE_Z 'H' // Rotate axis z to right
 #define SIZE_OBJECT 8
-
-char BOTTON_CODE[] = {'L','R','F','B', 'A','C','D','E','F','G'};
-
-bool enable = true;
-
-byte cube[512];
-
-int objectCube[SIZE_OBJECT];
-int x = 0;
-int y = 0;
+#define NUMBER_OBJECT 7
 
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
-long randNumber;
-
-int objects[8][8] =  {411,412,419,420,475,476,483,484,
-                      411,412,419,420,475,476,483,484,
-                      411,412,419,420,475,476,483,484,
-                      411,412,419,420,475,476,483,484};
-
+//Tipo generico de peça 
 typedef struct{
+  int x = 0;
+  int y = 0;
   int typeObject;
-  int currentPosition[8];
+  int currentPosition[SIZE_OBJECT];
 }Object;
 
-Object randomObject(){
-  randNumber = random(4);
-  Object object;
-  object.typeObject = randNumber;
-  for(int i = 0; i < SIZE_OBJECT; i++){
-     object.currentPosition[i] = objects[randNumber][i]; 
-  }
-  return object;
-}
+char BOTTON_CODE[] = {'L','R','F','B', 'A','C','D','E','F','G'};
+
+//Variavel aleatória para escolher o formato no reset
+long randNumber;
+
+//É usado para incializar os diferentes tipos
+int objects[NUMBER_OBJECT][SIZE_OBJECT] =  {411,412,419,420,475,476,483,484, //[]
+                                            347,348,355,356,419,420,483,484, //L
+                                            347,348,355,356,411,412,475,476, //L-inv
+                                            403,404,411,412,475,476,483,484, //Z
+                                            411,412,419,420,467,468,483,484, //Z-inv
+                                            403,404,411,412,419,420,475,476, //T
+                                            291,292,355,356,419,420,483,484};//I
+
+bool enable = true;
+byte cube[512];
+Object currentObject;
 
 void setup(){
     
@@ -58,7 +53,6 @@ void setup(){
 
     clearCube();
     resetObject();
-    //setObject(objectCube);
 
     Timer1.initialize(1500000);
     Timer1.attachInterrupt(updateGame);
@@ -71,34 +65,63 @@ void loop() {
 }
 
 bool resetObject(){
-  objectCube[0] = 411;
-  objectCube[1] = 412;
-  objectCube[2] = 419;
-  objectCube[3] = 420;
-  objectCube[4] = 475;
-  objectCube[5] = 476;
-  objectCube[6] = 483;
-  objectCube[7] = 484;
+  currentObject = randomObject();
+  return setObject();
+}
 
-  return setObject(objectCube);
+/*Cria um objeto ramdomicmente: 0,1,2,3 */
+Object randomObject(){
+  randNumber = random(7);
+  Object object;
+  object.typeObject = randNumber;
+  for(int i = 0; i < SIZE_OBJECT; i++){
+     object.currentPosition[i] = objects[randNumber][i]; 
+  }
+  return object;
+}
+
+/**(desce toda estrutura)*/
+void downAll(){
+  for(int i = 64; i < 512; i++){
+    if(cube[i] == 1){
+      cube[i-64] = 1;
+      cube[i] = 0;
+    }
+  }
+}
+
+/*Verifica se a camada está preenchida se sim *(desce toda estrutura), 
+e executa novamente para a próxima camada*/
+void verifyCompleteLayer(){
+  for(int i = 0; i < 63; i++){
+    if(cube[i] == 0){
+      return false;
+    }else if(i == 63){
+      downAll();
+      i=0;
+    }
+  }
 }
 
 void updateGame(){
-//  sendSettings();
-  if (!standardMotion(objectCube)){
-    if(!resetObject()){
-      printDisplayLine1("Game Over");
-    }else{ 
-      printDisplayLine2(String(millis()/1000));
+  if(enable){
+    if (!standardMotion()){
+      verifyCompleteLayer();
+      if(!resetObject()){
+        printDisplayLine1("Game Over");
+        enable = false;
+      }else{ 
+        printDisplayLine2(String(millis()/1000));
+      }
     }
+    sendSettings();
   }
-  sendSettings();
 }
 
-bool setObject(int object[]){
+bool setObject(){
   for(int i = 0; i < SIZE_OBJECT; i++){
-    if(cube[object[i]] == 0){
-      cube[object[i]] = 1;
+    if(cube[currentObject.currentPosition[i]] == 0){
+      cube[currentObject.currentPosition[i]] = 1;
     }else{
       return false;
     }
@@ -106,78 +129,81 @@ bool setObject(int object[]){
   return true;
 }
 
-bool standardMotion(int object[]){
-  //int sizeObject = sizeof(object)/sizeof(int); //FORMA DINÂMICA
+bool standardMotion(){
+  int newPosition;
   for(int i = 0; i < SIZE_OBJECT; i++){
-    int newPosition = object[i] - 64;
-    if(newPosition >= 0 && cube[newPosition] == 0){
-      cube[object[i]] = 0;
-      object[i] = newPosition;
-      cube[object[i]] = 1;
-    }else{
+    newPosition = currentObject.currentPosition[i] - 64;
+    for(int j = 0; j < SIZE_OBJECT; j++){
+      if(newPosition == currentObject.currentPosition[j]){
+        continue;
+      }
+    }
+    if(!(newPosition >= 0 && cube[newPosition] == 0)){
       return false;
     }
+  }
+  for(int i = 0; i < SIZE_OBJECT; i++){
+    newPosition = currentObject.currentPosition[i] - 64;
+    cube[currentObject.currentPosition[i]] = 0;
+    currentObject.currentPosition[i] = newPosition;
+    cube[currentObject.currentPosition[i]] = 1;
   }
   return true;
 }
 
 void move_left(){
-  if(x > -3){
+  if(currentObject.x > -3){
     for(int i = 0; i < SIZE_OBJECT; i++){
-      int newPosition = objectCube[i] - 8;
+      int newPosition = currentObject.currentPosition[i] - 8;
       if(newPosition >= 0 && cube[newPosition] == 0){
-        cube[objectCube[i]] = 0;
-        objectCube[i] = newPosition;
-        cube[objectCube[i]] = 1;
+        cube[currentObject.currentPosition[i]] = 0;
+        currentObject.currentPosition[i] = newPosition;
+        cube[currentObject.currentPosition[i]] = 1;
       }
     }
-    x--;
-    //sendSettings();
+    currentObject.x--;
   }
 }
 
 void move_right(){
-  if(x < 3){
+  if(currentObject.x < 3){
     for(int i = SIZE_OBJECT-1; i >= 0; i--){
-      int newPosition = objectCube[i] + 8;
+      int newPosition = currentObject.currentPosition[i] + 8;
       if(newPosition >= 0 && cube[newPosition] == 0){
-        cube[objectCube[i]] = 0;
-        objectCube[i] = newPosition;
-        cube[objectCube[i]] = 1;
+        cube[currentObject.currentPosition[i]] = 0;
+        currentObject.currentPosition[i] = newPosition;
+        cube[currentObject.currentPosition[i]] = 1;
       }
     }
-    x++;
-     //sendSettings();
+    currentObject.x++;
   }
 }
 
 void move_front(){
-  if(y < 3){
+  if(currentObject.y < 3){
     for(int i = SIZE_OBJECT-1; i >= 0; i--){
-      int newPosition = objectCube[i] + 1;
+      int newPosition = currentObject.currentPosition[i] + 1;
       if(newPosition >= 0 && cube[newPosition] == 0){
-        cube[objectCube[i]] = 0;
-        objectCube[i] = newPosition;
-        cube[objectCube[i]] = 1;
+        cube[currentObject.currentPosition[i]] = 0;
+        currentObject.currentPosition[i] = newPosition;
+        cube[currentObject.currentPosition[i]] = 1;
       }
     }
-    y++;
-    //sendSettings();
+    currentObject.y++;
   }
 }
 
 void move_back(){
-  if(y > -3){
+  if(currentObject.y > -3){
     for(int i = 0; i < SIZE_OBJECT; i++){
-      int newPosition = objectCube[i] - 1;
+      int newPosition = currentObject.currentPosition[i] - 1;
       if(newPosition >= 0 && cube[newPosition] == 0){
-        cube[objectCube[i]] = 0;
-        objectCube[i] = newPosition;
-        cube[objectCube[i]] = 1;
+        cube[currentObject.currentPosition[i]] = 0;
+        currentObject.currentPosition[i] = newPosition;
+        cube[currentObject.currentPosition[i]] = 1;
       }
     }
-    y--;
-    //sendSettings();
+    currentObject.y--;
   }
   
 }
@@ -212,42 +238,49 @@ void serialEvent() {
 
     switch(inChar){
       case MOVE_LEFT:
-          printDisplayLine1("MOVE_LEFT");
+          printDisplayLine1("MOVE LEFT");
           move_left();
           break;
       case MOVE_RIGHT:
-          printDisplayLine1("MOVE_RIGHT");
+          printDisplayLine1("MOVE RIGHT");
           move_right();
           break;
       case MOVE_FRONT:
+          printDisplayLine1("MOVE FRONT");
           move_front();
           break;
       case MOVE_BACK:
+          printDisplayLine1("MOVE BACK");
           move_back();
           break;
       case MOVE_L_ROTATE_X:
+          printDisplayLine1("MOVE L ROTATE X");
           move_l_rotate_x();
           break;
       case MOVE_R_ROTATE_X:
+          printDisplayLine1("MOVE R ROTATE X");
           move_r_rotate_x();
           break;
       case MOVE_L_ROTATE_Y:
+          printDisplayLine1("MOVE L ROTATE Y");
           move_l_rotate_y();
           break;
       case MOVE_R_ROTATE_Y:
+          printDisplayLine1("MOVE R ROTATE Y");
           move_r_rotate_y();
           break;
       case MOVE_L_ROTATE_Z:
+          printDisplayLine1("MOVE L ROTATE Z");
           move_l_rotate_z();
           break;
       case MOVE_R_ROTATE_Z:
+          printDisplayLine1("MOVE R ROTATE Z");
           move_r_rotate_z();
           break;
       default:
+          printDisplayLine1("MOVE ERROR");
           break;
     }
-    //Serial.println(inChar);
-    //printDisplayLine1(String(inChar));
   }
 }
 
@@ -271,10 +304,6 @@ void sendSettings(){
       Serial.write(x);
     }
   }
-  
-//  for(int i = 0; i < 512; i++){
-//    Serial.write(cube[i]);
-//  }
 }
 
 void printDisplayLine1(String text){
