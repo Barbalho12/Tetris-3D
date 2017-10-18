@@ -37,7 +37,6 @@ void setup(){
 
     clearCube();
     resetObject();
-    //setObject(objectCube);
 
     Timer1.initialize(1500000);
     Timer1.attachInterrupt(updateGame);
